@@ -55,6 +55,9 @@ struct ema_t_
     sgx_enclave_fault_handler_t
         handler;  // custom PF handler  (for EACCEPTCOPY use)
     void* priv;   // private data for handler
+
+    uint8_t in_commit;   // indicates commit/commit_data is in progress on this EMA
+                         // 0 = no, 1 = in progress
     ema_t* next;  // next in doubly linked list
     ema_t* prev;  // prev in doubly linked list
 };
