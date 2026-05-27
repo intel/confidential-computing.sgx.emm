@@ -78,6 +78,7 @@ extern "C"
     int ema_clear_eaccept_full(ema_t* node);
     int ema_set_eaccept(ema_t* node, size_t start, size_t end);
     bool ema_page_committed(ema_t* ema, size_t addr);
+    bool ema_in_commit(ema_t* ema);
 
     ema_t* search_ema(ema_root_t* root, size_t addr);
     int search_ema_range(ema_root_t* root, size_t start, size_t end,
@@ -89,7 +90,6 @@ extern "C"
     bool find_free_region_at(ema_root_t* root, size_t addr, size_t size,
                              ema_t** next_ema);
 
-    int do_commit(size_t start, size_t size, uint64_t si_flags, bool grow_up);
     int ema_do_commit(ema_t* node, size_t start, size_t end);
     int ema_do_commit_loop(ema_t* first, ema_t* last, size_t start, size_t end);
 

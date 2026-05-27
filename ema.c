@@ -233,6 +233,11 @@ bool ema_page_committed(ema_t* ema, size_t addr)
                           (addr - ema->start_addr) >> SGX_PAGE_SHIFT);
 }
 
+bool ema_in_commit(ema_t* ema)
+{
+    return ema->in_commit == 1 ? true : false;
+}
+
 // search for a node whose address range contains 'addr'
 ema_t* search_ema(ema_root_t* root, size_t addr)
 {
@@ -588,6 +593,7 @@ ema_t* ema_new(size_t addr, size_t size, uint32_t alloc_flags,
         .eaccept_map = NULL,
         .handler = handler,
         .priv = private_data,
+        .in_commit = 0,
         .next = NULL,
         .prev = NULL,
     };
@@ -640,11 +646,11 @@ static int eaccept_range_backward(const sec_info_t* si, size_t start,
     return 0;
 }
 
-int do_commit(size_t start, size_t size, uint64_t si_flags, bool grow_up)
+static int do_commit(ema_t *node, size_t start, size_t size, uint64_t si_flags, bool grow_up)
 {
     sec_info_t si SGX_SECINFO_ALIGN = {si_flags | SGX_EMA_STATE_PENDING, 0};
     int ret = -1;
-
+    node->in_commit = 1;
     if (grow_up)
     {
         ret = eaccept_range_backward(&si, start, start + size);
@@ -653,6 +659,7 @@ int do_commit(size_t start, size_t size, uint64_t si_flags, bool grow_up)
     {
         ret = eaccept_range_forward(&si, start, start + size);
     }
+    node->in_commit = 0;
 
     return ret;
 }
@@ -674,7 +681,9 @@ int ema_do_commit(ema_t* node, size_t start, size_t end)
         // only commit for uncommitted page
         if (!bit_array_test(node->eaccept_map, pos))
         {
+            node->in_commit = 1;
             int ret = do_eaccept(&si, addr);
+            node->in_commit = 0;
             if (ret != 0)
             {
                 return ret;
@@ -1133,7 +1142,9 @@ int ema_do_commit_data(ema_t* node, size_t start, size_t end, uint8_t* data,
 
     while (addr < end)
     {
+        node->in_commit = 1;
         int ret = do_eacceptcopy(&si, addr, src);
+        node->in_commit = 0;
         if (ret != 0)
         {
             return EFAULT;
@@ -1259,7 +1270,7 @@ int ema_do_alloc(ema_t* node)
     if (alloc_flags & SGX_EMA_COMMIT_NOW)
     {
         int grow_up = (alloc_flags & SGX_EMA_GROWSDOWN) ? 0 : 1;
-        ret = do_commit(tmp_addr, size, node->si_flags, grow_up);
+        ret = do_commit(node, tmp_addr, size, node->si_flags, grow_up);
         if (ret)
         {
             return ret;

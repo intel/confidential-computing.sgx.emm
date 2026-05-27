@@ -409,6 +409,13 @@ int sgx_mm_enclave_pfhandler(const sgx_pfinfo* pfinfo)
             ret = SGX_MM_EXCEPTION_CONTINUE_EXECUTION;
         goto unlock;
     }
+    if (ema_in_commit(ema))
+    {
+        // Interrupt happens at EACCEPT/EACCEPTCOPY in commit page process.
+        // We need to skip the EACCEPT in the sig handler.
+        ret = SGX_MM_EXCEPTION_CONTINUE_EXECUTION;
+        goto unlock;
+    }
     if (get_ema_alloc_flags(ema) & SGX_EMA_COMMIT_ON_DEMAND)
     {
         if ((pfinfo->pfec.rw == 0 &&
